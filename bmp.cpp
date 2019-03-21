@@ -2,7 +2,6 @@
 // A program to read, write, and crop BMP image files.
 #include "bmp.h"
 
-
 long _get_file_size(FILE *fp);
 int _get_image_size_bytes(BMPHeader *bmp_header);
 int _get_image_row_size_bytes(BMPHeader *bmp_header);
@@ -11,6 +10,7 @@ int _get_padding(BMPHeader *bmp_header);
 int _get_position_x_row(int x, BMPHeader *bmp_header);
 bool _check(bool condition, char **error, const char *error_message);
 char *_string_duplicate(const char *string);
+
 
 
 
