@@ -27,12 +27,12 @@
 #define COMPRESSION         0
 #define NUM_COLORS          0
 #define IMPORTANT_COLORS    0
-#define BITS_PER_BYTE 8
-#define BITS_PER_PIXEL 24
+#define BITS_PER_BYTE       8
+#define BITS_PER_PIXEL      24
 
 
 #ifdef _MSC_VER
-#pragma pack(push)  // save the original data alignment
+    #pragma pack(push)  // save the original data alignment
     #pragma pack(1)     // Set data alignment to 1 byte boundary
 #endif
 
@@ -62,7 +62,7 @@ typedef struct
 
 
 #ifdef _MSC_VER
-#pragma pack(pop)  // restore the previous pack setting
+    #pragma pack(pop)  // restore the previous pack setting
 #endif
 
 
@@ -74,5 +74,6 @@ typedef struct {
     // on a rare machine with 16-bit char.
     uint8_t* data;
 } BMPImage;
+
 
 #endif //BITMAPLION_BITMAPINFORMATION_H
