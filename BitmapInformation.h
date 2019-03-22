@@ -27,7 +27,7 @@
 #define COMPRESSION         0
 #define NUM_COLORS          0
 #define IMPORTANT_COLORS    0
-#define BITS_PER_BYTE       8
+#define BITS_PER_BYTE       8u
 #define BITS_PER_PIXEL      24
 
 

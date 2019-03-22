@@ -3,9 +3,9 @@
 #include "bmp.h"
 
 long _get_file_size(FILE *fp);
-int _get_image_size_bytes(BMPHeader *bmp_header);
-int _get_image_row_size_bytes(BMPHeader *bmp_header);
-int _get_bytes_per_pixel(BMPHeader  *bmp_header);
+uint32_t _get_image_size_bytes(BMPHeader *bmp_header);
+uint32_t _get_image_row_size_bytes(BMPHeader *bmp_header);
+uint32_t _get_bytes_per_pixel(BMPHeader  *bmp_header);
 int _get_padding(BMPHeader *bmp_header);
 int _get_position_x_row(int x, BMPHeader *bmp_header);
 bool _check(bool condition, char **error, const char *error_message);
@@ -28,7 +28,7 @@ BMPImage *read_bmp(FILE *fp, char **error)
     }
     // Read header
     rewind(fp);
-    int num_read = fread(&image->header, sizeof(image->header), 1, fp);
+    size_t num_read = fread(&image->header, sizeof(image->header), 1, fp);
     if(!_check(num_read == 1, error, "Cannot read header"))
     {
         return NULL;
@@ -66,7 +66,7 @@ bool write_bmp(FILE *fp, BMPImage *image, char **error)
 {
     // Write header
     rewind(fp);
-    int num_read = fwrite(&image->header, sizeof(image->header), 1, fp);
+    size_t num_read = fwrite(&image->header, sizeof(image->header), 1, fp);
     if (!_check(num_read == 1, error, "Cannot write image"))
     {
         return false;
@@ -213,16 +213,16 @@ long _get_file_size(FILE *fp)
 }
 
 // Return the size of the image in bytes.
-int _get_image_size_bytes(BMPHeader *bmp_header)
+uint32_t _get_image_size_bytes(BMPHeader *bmp_header)
 {
     return _get_image_row_size_bytes(bmp_header) * bmp_header->height_px;
 }
 
 //   Return the size of an image row in bytes.
 // - Precondition: the header must have the width of the image in pixels.
-int _get_image_row_size_bytes(BMPHeader *bmp_header)
+uint32_t _get_image_row_size_bytes(BMPHeader *bmp_header)
 {
-    int bytes_per_row_without_padding = bmp_header->width_px * _get_bytes_per_pixel(bmp_header);
+    uint32_t bytes_per_row_without_padding = bmp_header->width_px * _get_bytes_per_pixel(bmp_header);
     return bytes_per_row_without_padding + _get_padding(bmp_header);
 }
 
@@ -235,7 +235,7 @@ int _get_padding(BMPHeader *bmp_header)
 // Return the number of bytes per pixel.
 // Precondition:
 //     - the header must have the number of bits per pixel.
-int _get_bytes_per_pixel(BMPHeader  *bmp_header)
+uint32_t _get_bytes_per_pixel(BMPHeader  *bmp_header)
 {
     return bmp_header->bits_per_pixel / BITS_PER_BYTE;
 }

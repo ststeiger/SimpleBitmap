@@ -113,6 +113,8 @@ int old_main()
     write_image("crop.bmp", crop_image, &error);
 
     bool is_valid = check_bmp_header(&crop_image->header, fopen("crop.bmp", "rb"));
+    if(!is_valid)
+        printf("Invalid BitMap-Header\n");
 
     _clean_up(NULL, image, &error);
     _clean_up(NULL, crop_image, &error);
