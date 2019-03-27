@@ -1,7 +1,7 @@
 
 #include "bmp.h"
 #include "lodepng.h"
-#include "BitmapInformation.h"
+#include "toojpeg.h"
 
 BMPImage *read_image(const char *filename, char **error);
 void write_image(const char *filename, BMPImage *image, char **error);
@@ -122,13 +122,48 @@ static BMPImage * CloneImage(int32_t w, int32_t h, uint8_t* scan0)
 }
 
 
-void encodePng(const char* filename, const unsigned char* image, unsigned width, unsigned height) {
+void encodePng(const char* filename, const unsigned char* image, unsigned width, unsigned height)
+{
     /*Encode the image*/
     unsigned error = lodepng_encode32_file(filename, image, width, height);
 
     /*if there's an error, display it*/
     if(error) printf("error %u: %s\n", error, lodepng_error_text(error));
 }
+
+
+
+class jpeg_crap
+{
+    private:
+        FILE* m_stream;
+    public:
+        jpeg_crap(FILE* stream)
+        {
+            this->m_stream  = stream;
+        }
+
+        // define a callback that accepts a single byte
+        void writeByte(unsigned char oneByte)
+        {
+            fputc(oneByte, m_stream);
+        }
+
+};
+
+
+
+void encodeJpg(const char* filename, const unsigned char* image, unsigned width, unsigned height)
+{
+    FILE *input_ptr = _open_file(filename, "rb");
+    jpeg_crap* workaround = new jpeg_crap(input_ptr);
+
+
+    bool ok = TooJpeg::writeJpeg( (TooJpeg::WRITE_ONE_BYTE) ( workaround->writeByte), image, width, height);
+    fclose(input_ptr);
+    delete workaround;
+}
+
 
 
 int old_main()
@@ -148,8 +183,11 @@ int old_main()
     uint8_t* data = image->data;
     uint8_t* png = bmp2png(data, image->header.bits_per_pixel/8, image->header.width_px, image->header.height_px);
 
-    encodePng("myfile.png", png,image->header.width_px, image->header.height_px);
-    free(png);
+
+    encodeJpg("myfile.jpg", image->data, image->header.width_px, image->header.height_px);
+
+    // encodePng("myfile.png", png,image->header.width_px, image->header.height_px);
+    // free(png);
 
     printf("type %d\n", image->header.type);
     printf("size %d\n", image->header.size);
