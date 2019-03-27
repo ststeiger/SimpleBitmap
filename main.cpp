@@ -183,6 +183,62 @@ static BMPImage * CloneImage(int32_t w, int32_t h, uint8_t* scan0)
 }
 
 
+uint8_t* upside_down(uint8_t* bmp, int bytes_per_pixel, unsigned int w, unsigned int h)
+{
+	uint32_t bytes_per_row_without_padding = w * bytes_per_pixel;
+	uint32_t padding = (4 - (w * bytes_per_pixel) % 4) % 4;
+	uint32_t row_size_bytes = bytes_per_row_without_padding + padding;
+
+	// FSCK, the bmp may have 3 bytes_per_pixel, but the PNG always has 4 bytes_per_pixel
+	// uint8_t* image = (uint8_t*)malloc(w*h*numChannels*sizeof(uint8_t));
+	uint8_t* image = (uint8_t*)malloc(w*h * bytes_per_pixel * sizeof(uint8_t));
+
+
+	//The amount of scanline bytes is width of image times channels, with extra bytes added if needed
+	//to make it a multiple of 4 bytes.
+	// unsigned int scanlineBytes = w * numChannels;
+	// if(scanlineBytes % 4 != 0)
+	//    scanlineBytes = (scanlineBytes / 4) * 4 + 4;
+
+	// printf("scanlineBytes: %d\n", scanlineBytes);
+
+	// There are 3 differences between BMP and the raw image buffer for LodePNG:
+	// -it's upside down
+	// -it's in BGR instead of RGB format (or BRGA instead of RGBA)
+	// -each scanline has padding bytes to make it a multiple of 4 if needed
+	// The 2D for loop below does all these 3 conversions at once.
+	for (unsigned int y = 0; y < h; y++)
+	{
+
+		for (unsigned int x = 0; x < w; x++)
+		{
+			//pixel start byte position in the BMP
+			unsigned int bmpos = (h - y - 1) * row_size_bytes + bytes_per_pixel * x;
+			//pixel start byte position in the new raw image
+			unsigned int newpos = bytes_per_pixel * y * w + bytes_per_pixel * x;
+
+			if (bytes_per_pixel == 3)
+			{
+				image[newpos + 0] = bmp[bmpos + 0]; // R
+				image[newpos + 1] = bmp[bmpos + 1]; // G
+				image[newpos + 2] = bmp[bmpos + 2]; // B
+			}
+			else if (bytes_per_pixel == 4)
+			{
+				image[newpos + 0] = bmp[bmpos + 0]; // R
+				image[newpos + 1] = bmp[bmpos + 1]; // G
+				image[newpos + 2] = bmp[bmpos + 2]; // B
+				image[newpos + 3] = bmp[bmpos + 3]; // A
+			}
+
+		} // Next x
+
+	} // Next y
+
+	return image;
+} // End Function upside_down 
+
+
 void encodePng(const char* filename, const unsigned char* image, unsigned width, unsigned height)
 {
     /*Encode the image*/
