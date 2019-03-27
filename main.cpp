@@ -3,6 +3,9 @@
 #include "lodepng.h"
 #include "toojpeg.h"
 
+#include <functional> // for lambda 
+#include <errno.h> // https://stackoverflow.com/questions/8633909/what-is-the-reason-for-fopens-failure-to-open-a-file
+
 BMPImage *read_image(const char *filename, char **error);
 void write_image(const char *filename, BMPImage *image, char **error);
 FILE *_open_file(const char *filename, const char *mode);
@@ -35,58 +38,116 @@ uint32_t computeImageSize(BMPHeader *bmp_header)
 //output image is always given in RGBA (with alpha channel), even if it's a BMP without alpha channel
 uint8_t* bmp2png(uint8_t* bmp, int bytes_per_pixel, unsigned int w, unsigned int h)
 {
-    uint32_t bytes_per_row_without_padding = w * bytes_per_pixel;
-    uint32_t padding =  (4 - (w * bytes_per_pixel) % 4) % 4;
-    uint32_t row_size_bytes = bytes_per_row_without_padding + padding;
+	uint32_t bytes_per_row_without_padding = w * bytes_per_pixel;
+	uint32_t padding = (4 - (w * bytes_per_pixel) % 4) % 4;
+	uint32_t row_size_bytes = bytes_per_row_without_padding + padding;
 
-    // FSCK, the bmp may have 3 bytes_per_pixel, but the PNG always has 4 bytes_per_pixel
-    // uint8_t* image = (uint8_t*)malloc(w*h*numChannels*sizeof(uint8_t));
-    uint8_t* image = (uint8_t*)malloc(w*h*4*sizeof(uint8_t));
+	// FSCK, the bmp may have 3 bytes_per_pixel, but the PNG always has 4 bytes_per_pixel
+	// uint8_t* image = (uint8_t*)malloc(w*h*numChannels*sizeof(uint8_t));
+	uint8_t* image = (uint8_t*)malloc(w*h * 4 * sizeof(uint8_t));
 
 
-    //The amount of scanline bytes is width of image times channels, with extra bytes added if needed
-    //to make it a multiple of 4 bytes.
-    // unsigned int scanlineBytes = w * numChannels;
-    // if(scanlineBytes % 4 != 0)
-    //    scanlineBytes = (scanlineBytes / 4) * 4 + 4;
+	//The amount of scanline bytes is width of image times channels, with extra bytes added if needed
+	//to make it a multiple of 4 bytes.
+	// unsigned int scanlineBytes = w * numChannels;
+	// if(scanlineBytes % 4 != 0)
+	//    scanlineBytes = (scanlineBytes / 4) * 4 + 4;
 
-    // printf("scanlineBytes: %d\n", scanlineBytes);
+	// printf("scanlineBytes: %d\n", scanlineBytes);
 
-    // There are 3 differences between BMP and the raw image buffer for LodePNG:
-    // -it's upside down
-    // -it's in BGR instead of RGB format (or BRGA instead of RGBA)
-    // -each scanline has padding bytes to make it a multiple of 4 if needed
-    // The 2D for loop below does all these 3 conversions at once.
-    for(unsigned int y = 0; y < h; y++)
-    {
+	// There are 3 differences between BMP and the raw image buffer for LodePNG:
+	// -it's upside down
+	// -it's in BGR instead of RGB format (or BRGA instead of RGBA)
+	// -each scanline has padding bytes to make it a multiple of 4 if needed
+	// The 2D for loop below does all these 3 conversions at once.
+	for (unsigned int y = 0; y < h; y++)
+	{
 
-        for(unsigned int x = 0; x < w; x++)
-        {
-            //pixel start byte position in the BMP
-            unsigned int bmpos = (h - y - 1) * row_size_bytes + bytes_per_pixel * x;
-            //pixel start byte position in the new raw image
-            unsigned int newpos = 4 * y * w + 4 * x;
+		for (unsigned int x = 0; x < w; x++)
+		{
+			//pixel start byte position in the BMP
+			unsigned int bmpos = (h - y - 1) * row_size_bytes + bytes_per_pixel * x;
+			//pixel start byte position in the new raw image
+			unsigned int newpos = 4 * y * w + 4 * x;
 
-            if(bytes_per_pixel == 3)
-            {
-                image[newpos + 0] = bmp[bmpos + 2]; //R
-                image[newpos + 1] = bmp[bmpos + 1]; //G
-                image[newpos + 2] = bmp[bmpos + 0]; //B
-                image[newpos + 3] = 255;            //A
-            }
-            else
-            {
-                image[newpos + 0] = bmp[bmpos + 3]; //R
-                image[newpos + 1] = bmp[bmpos + 2]; //G
-                image[newpos + 2] = bmp[bmpos + 1]; //B
-                image[newpos + 3] = bmp[bmpos + 0]; //A
-            }
+			if (bytes_per_pixel == 3)
+			{
+				image[newpos + 0] = bmp[bmpos + 2]; //R
+				image[newpos + 1] = bmp[bmpos + 1]; //G
+				image[newpos + 2] = bmp[bmpos + 0]; //B
+				image[newpos + 3] = 255;            //A
+			}
+			else
+			{
+				image[newpos + 0] = bmp[bmpos + 3]; //R
+				image[newpos + 1] = bmp[bmpos + 2]; //G
+				image[newpos + 2] = bmp[bmpos + 1]; //B
+				image[newpos + 3] = bmp[bmpos + 0]; //A
+			}
 
-        } // Next x
+		} // Next x
 
-    } // Next y
+	} // Next y
 
-    return image;
+	return image;
+}
+
+
+
+uint8_t* bmp2jpg(uint8_t* bmp, int bytes_per_pixel, unsigned int w, unsigned int h)
+{
+	uint32_t bytes_per_row_without_padding = w * bytes_per_pixel;
+	uint32_t padding = (4 - (w * bytes_per_pixel) % 4) % 4;
+	uint32_t row_size_bytes = bytes_per_row_without_padding + padding;
+
+	// FSCK, the bmp may have 3 bytes_per_pixel, but the PNG always has 4 bytes_per_pixel
+	// uint8_t* image = (uint8_t*)malloc(w*h*numChannels*sizeof(uint8_t));
+	uint8_t* image = (uint8_t*)malloc(w*h * 3 * sizeof(uint8_t));
+
+
+	//The amount of scanline bytes is width of image times channels, with extra bytes added if needed
+	//to make it a multiple of 4 bytes.
+	// unsigned int scanlineBytes = w * numChannels;
+	// if(scanlineBytes % 4 != 0)
+	//    scanlineBytes = (scanlineBytes / 4) * 4 + 4;
+
+	// printf("scanlineBytes: %d\n", scanlineBytes);
+
+	// There are 3 differences between BMP and the raw image buffer for LodePNG:
+	// -it's upside down
+	// -it's in BGR instead of RGB format (or BRGA instead of RGBA)
+	// -each scanline has padding bytes to make it a multiple of 4 if needed
+	// The 2D for loop below does all these 3 conversions at once.
+	for (unsigned int y = 0; y < h; y++)
+	{
+
+		for (unsigned int x = 0; x < w; x++)
+		{
+			//pixel start byte position in the BMP
+			unsigned int bmpos = (h - y - 1) * row_size_bytes + bytes_per_pixel * x;
+			//pixel start byte position in the new raw image
+			unsigned int newpos = 3 * y * w + 3 * x;
+
+			if (bytes_per_pixel == 3)
+			{
+				image[newpos + 0] = bmp[bmpos + 2]; //R
+				image[newpos + 1] = bmp[bmpos + 1]; //G
+				image[newpos + 2] = bmp[bmpos + 0]; //B
+				// image[newpos + 3] = 255;            //A
+			}
+			else // TODO: ever hit ? 
+			{
+				image[newpos + 0] = bmp[bmpos + 3]; //R
+				image[newpos + 1] = bmp[bmpos + 2]; //G
+				image[newpos + 2] = bmp[bmpos + 1]; //B
+				// image[newpos + 3] = bmp[bmpos + 0]; //A
+			}
+
+		} // Next x
+
+	} // Next y
+
+	return image;
 }
 
 
@@ -132,43 +193,26 @@ void encodePng(const char* filename, const unsigned char* image, unsigned width,
 }
 
 
-
-class jpeg_crap
-{
-    private:
-        FILE* m_stream;
-    public:
-        jpeg_crap(FILE* stream)
-        {
-            this->m_stream  = stream;
-        }
-
-        // define a callback that accepts a single byte
-        void writeByte(unsigned char oneByte)
-        {
-            fputc(oneByte, m_stream);
-        }
-
-};
-
-
-
 void encodeJpg(const char* filename, const unsigned char* image, unsigned width, unsigned height)
 {
-    FILE *input_ptr = _open_file(filename, "rb");
-    jpeg_crap* workaround = new jpeg_crap(input_ptr);
-
-
-    bool ok = TooJpeg::writeJpeg( (TooJpeg::WRITE_ONE_BYTE) ( workaround->writeByte), image, width, height);
+    FILE *input_ptr = _open_file(filename, "wb");
+	TooJpeg::WRITE_ONE_BYTE lambda = [input_ptr](unsigned char oneByte) { fputc(oneByte, input_ptr); };
+	
+	printf("before\n");
+	bool ok = TooJpeg::writeJpeg(lambda, image, width, height);
+	printf("after\n");
     fclose(input_ptr);
-    delete workaround;
 }
-
 
 
 int old_main()
 {
     char *error = NULL;
+
+	// static void incrementer_(int *in) { ++*in; } // this is outside of function 
+	// int in1 = 10;
+	// int(*incrementer1)() = alloc_callback(&incrementer_, &in1);
+
 
     // https://youtrack.jetbrains.com/issue/CPP-1296#comment=27-1846360
 #ifdef __JETBRAINS_IDE__
@@ -177,14 +221,21 @@ int old_main()
     BMPImage *image = read_image("6x6_24bit.bmp", &error);
 #endif
 
+	
+
 
     sizeof(BMPHeader);
 
     uint8_t* data = image->data;
     uint8_t* png = bmp2png(data, image->header.bits_per_pixel/8, image->header.width_px, image->header.height_px);
+	uint8_t* jpg = bmp2jpg(data, image->header.bits_per_pixel / 8, image->header.width_px, image->header.height_px);
 
 
-    encodeJpg("myfile.jpg", image->data, image->header.width_px, image->header.height_px);
+	// encodeJpg("myfile.jpg", image->data, image->header.width_px, image->header.height_px);
+	// encodeJpg("myfile.jpg", png, image->header.width_px, image->header.height_px);
+	encodeJpg("myfile.jpg", jpg, image->header.width_px, image->header.height_px);
+    
+	return 0;
 
     // encodePng("myfile.png", png,image->header.width_px, image->header.height_px);
     // free(png);
@@ -284,7 +335,8 @@ FILE *_open_file(const char *filename, const char *mode)
     FILE *fp = fopen(filename, mode);
     if (fp == NULL)
     {
-        fprintf(stderr, "Could not open file %s\n", filename);
+		fprintf(stderr, "Could not open file %s\n", filename);
+		fprintf(stderr, "Errod %d\n", errno);
 
         exit(EXIT_FAILURE);
     }
